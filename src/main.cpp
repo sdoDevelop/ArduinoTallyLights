@@ -13,21 +13,14 @@ unsigned int localPort = 5005;                      // Port to listen on
 EthernetServer server(localPort);
 
 // LED configuration
-#define NUM_LEDS 26
-#define DATA_PIN 6
-CRGB leds[NUM_LEDS];
+#define NUM_STRIPS 5
+#define NUM_LEDS_PER_STRIP 6
 
-// LED strip ranges
-const int stripRanges[5][2] = {
-  {0, 5},   // Strip 1 (Red)
-  {6, 10},  // Strip 2 (Green)
-  {11, 15}, // Strip 3 (Blue)
-  {16, 20}, // Strip 4 (Purple)
-  {21, 25}  // Strip 5 (Warm White)
-};
+const int dataPins[NUM_STRIPS] = {2, 3, 4, 5, 6}; // Data pins for each strip
+CRGB leds[NUM_STRIPS][NUM_LEDS_PER_STRIP];
 
 // Colors for each strip
-const CRGB stripColors[5] = {
+const CRGB stripColors[NUM_STRIPS] = {
   CRGB::Red,
   CRGB::Green,
   CRGB::Blue,
@@ -50,9 +43,11 @@ void setup() {
   Serial.print("Server is listening on IP: ");
   Serial.println(Ethernet.localIP());
 
-  // Initialize FastLED
-  FastLED.addLeds<WS2812, DATA_PIN, GRB>(leds, NUM_LEDS);
-  clearAllStrips();
+  // Initialize FastLED for each strip
+  for (int i = 0; i < NUM_STRIPS; i++) {
+    FastLED.addLeds<WS2812, dataPins[i], GRB>(leds[i], NUM_LEDS_PER_STRIP);
+    clearStrip(i);
+  }
   FastLED.show();
 }
 
@@ -81,7 +76,7 @@ void loop() {
           int stripIndex = values[0].toInt() - 1; // Convert to 0-based index
           String state = values[1];
 
-          if (stripIndex >= 0 && stripIndex < 5) {
+          if (stripIndex >= 0 && stripIndex < NUM_STRIPS) {
             if (state == "on") {
               setStrip(stripIndex, true);
             } else if (state == "off") {
@@ -143,12 +138,9 @@ bool splitString(String data, String result[], int expectedCount) {
 
 // Function to turn a specific strip on or off
 void setStrip(int stripIndex, bool state) {
-  int start = stripRanges[stripIndex][0];
-  int end = stripRanges[stripIndex][1];
-
   CRGB color = state ? stripColors[stripIndex] : CRGB::Black;
-  for (int i = start; i <= end; i++) {
-    leds[i] = color;
+  for (int i = 0; i < NUM_LEDS_PER_STRIP; i++) {
+    leds[stripIndex][i] = color;
   }
 
   FastLED.show();
@@ -158,9 +150,9 @@ void setStrip(int stripIndex, bool state) {
   Serial.println(state ? "on" : "off");
 }
 
-// Function to clear all strips (turn them off)
-void clearAllStrips() {
-  for (int i = 0; i < NUM_LEDS; i++) {
-    leds[i] = CRGB::Black;
+// Function to clear a specific strip (turn it off)
+void clearStrip(int stripIndex) {
+  for (int i = 0; i < NUM_LEDS_PER_STRIP; i++) {
+    leds[stripIndex][i] = CRGB::Black;
   }
 }
